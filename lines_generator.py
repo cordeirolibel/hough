@@ -18,26 +18,26 @@ import cv2
 size = (1280,720)
 
 #lines
-delta_lines = [3,30]
-aplha_lines = [0.7,1]
+delta_lines = [3,20]
+alpha_lines = [0.7,1]
 
 #ellipses
 delta_ellipses = [3,10]
 aplha_ellipses = [0.7,1]
-radius_ellipses = [0.1,0.7] #1 = size, ex:1280,720
+radius_ellipses = [0.1,0.6] #1 = size, ex:1280,720
 
 #texture
 n_textures = 2
-alpha_textures = [0.05, 0.2] #max=1
+alpha_textures = [0.05, 0.1] #max=1
 
 #binary noise
-binary_noise_probability = 0.003 #max=1
+binary_noise_probability = 0.002 #max=1
 
 #smoothing
-smooth_delta_kernel = [3,11] #[3,7] => (3,3)or(5,5)or(7,7)
+smooth_delta_kernel = [9,17] #[3,7] => (3,3)or(5,5)or(7,7)
 
 #simple noise
-noise_delta_sigma = [-10,10] #max=255
+noise_delta_sigma = [-5,5] #max=255
 
 
 
@@ -57,7 +57,7 @@ def norm(im):
 
 # In[6]:
 
-def add_lines(im,delta_lines,aplha_lines):
+def add_lines(im,delta_lines,alpha_lines):
     im = im.copy()
 
     #Parameters
@@ -69,25 +69,31 @@ def add_lines(im,delta_lines,aplha_lines):
     lines = list()
     for l in range(n_lines):
 
-        #random line
-        dist = np.random.random()*d_max
-        angle = np.random.random()*2*np.pi-np.pi
-        alpha = np.random.random()*(aplha_lines[1]-aplha_lines[0])+aplha_lines[0]
-
+        #random line (a point and a angle phi)
+        #ax+b=y
+        x = int(np.random.random()*size[1])
+        y = int(np.random.random()*size[0])
+        phi = np.random.random()*2*np.pi
+        #find limits
+        x1 = 0
+        y1 = int(y+x*np.tan(phi))
+        x2 = int(im.shape[1]) # x_max
+        y2 = int(y - (x2-x)*np.tan(phi))
+        #dist = xsin(o)+ycos(o)
+        angle = np.arctan((y2-y1)/(x1-x2))
+        dist = x1*np.sin(angle)+y1*np.cos(angle)
+        #alpha - opacity
+        alpha = np.random.random()*(alpha_lines[1]-alpha_lines[0])+alpha_lines[0]
+        
         #save
         lines.append([dist,angle,alpha])
 
-        #to rectangle
-        pt1 = np.around(dist/np.sin(angle))                         #x=0     => [0,d/sin(o)]
-        pt2 = np.around((dist-size[1]*np.cos(angle))/np.sin(angle)) #x=x_max => [x_max,(d-x_max.cos(o))/sin(o)]
-
         #line pixels
-        rows, cols, vals = line_aa(int(pt1), 0, int(pt2), size[1])
+        rows, cols, vals = line_aa(x1,y1,x2,y2)
         for r,c,v in zip(rows, cols, vals):
-            try:
-                im[c][r] = v*alpha
-            except:#out matrix
-                break
+            if r<0 or r>=size[0] or c<0 or c>=size[1]:
+                continue #out matrix
+            im[r][c] = v*alpha
     
     return np.array(lines), norm(im)
 
@@ -242,7 +248,7 @@ def equalize(im):
 def im_generator(n_images=1,
                  size = size,
                  delta_lines = delta_lines,
-                 aplha_lines = aplha_lines,
+                 alpha_lines = alpha_lines,
                  delta_ellipses = delta_ellipses,
                  radius_ellipses = radius_ellipses,
                  aplha_ellipses = aplha_ellipses,                 
@@ -262,7 +268,7 @@ def im_generator(n_images=1,
         im = np.zeros((size[1],size[0]))
 
         #Add Lines
-        lines,im = add_lines(im,delta_lines,aplha_lines)
+        lines,im = add_lines(im,delta_lines,alpha_lines)
         
         #Add Ellipses
         im = add_ellipses(im,delta_ellipses,radius_ellipses,aplha_ellipses)

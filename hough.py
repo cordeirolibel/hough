@@ -31,11 +31,17 @@ def bin_im1(im_gray, _disk = 1):
     ret3,im_bin = cv2.threshold(im_grad,0,255,cv2.THRESH_OTSU)
     return im_bin
 
+def __norm(im):
+    im = np.array(im).astype('float32')
+    im = (im-np.min(im))*255/(np.max(im)-np.min(im))
+    return im.astype('uint8')
 
 # Laplacian
-def bin_im2(im_gray,thresholds = (50,200)):
-    im_grad = cv2.Laplacian(im_gray,cv2.CV_32F)
-    im_grad = np.abs(im_grad).astype('uint8')
+def bin_im2(im_gray):
+    im_grad = cv2.Laplacian(im_gray,cv2.CV_32F,ksize=11)
+    im_grad[im_grad<0] = 0
+    im_grad = __norm(im_grad)
+    #im_grad = np.abs(im_grad).astype('uint8')
     
     # Otsu's thresholding 
     ret3,im_bin = cv2.threshold(im_grad,0,255,cv2.THRESH_OTSU)
@@ -47,11 +53,13 @@ def bin_im3(im_gray,thresholds = (50,200)):
     im_bin = cv2.Canny(im_gray,thresholds[0],thresholds[1])
     return im_bin
 
-
 def plot_lines(im_gray,dists,angles,linewidth=0.7):
     y_max, x_max = im_gray.shape
-    pts1 = np.around(dists/np.sin(angles))                        #x=0     => [0,r/sin(o)]
-    pts2 = np.around((dists-x_max*np.cos(angles))/np.sin(angles)) #x=x_max => [x_max,(r-x_max.cos(o))/sin(o)]
+    #dists =np.around(dists+y_max)
+    #x1s = 0
+    y1s = np.around(dists/np.cos(angles))  
+    #x2s = x_max
+    y2s = np.around((dists-x_max*np.sin(angles))/np.cos(angles))
     
     #plot img
     plt.figure(figsize=(10,10))
@@ -59,11 +67,11 @@ def plot_lines(im_gray,dists,angles,linewidth=0.7):
     plt.imshow(im_gray, cmap='gray')
     
     #plot lines
-    for pt1,pt2 in zip(pts1,pts2):
+    for y1,y2 in zip(y1s,y2s):
         #plt.plot(x,y)
-        plt.plot((0, x_max), (pt1, pt2), 'r',linewidth=linewidth)
-
-    # [xmin, xmax, ymin, ymax]
+        plt.plot((0, x_max), (y1, y2), 'r',linewidth=linewidth)
+        #plt.plot((y2, y1),(x_max,0), 'r',linewidth=linewidth)
+    # [xmin, xmax, ymin, ymax] ivert y for image
     plt.axis((0,x_max,y_max,0))
     
     plt.show()
