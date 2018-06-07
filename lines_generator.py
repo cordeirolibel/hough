@@ -95,6 +95,8 @@ def add_lines(im,delta_lines,alpha_lines):
                 continue #out matrix
             im[r][c] = v*alpha
     
+    im[np.isnan(im)]=1
+    
     return np.array(lines), norm(im)
 
 

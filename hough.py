@@ -38,13 +38,18 @@ def __norm(im):
 
 # Laplacian
 def bin_im2(im_gray):
-    im_grad = cv2.Laplacian(im_gray,cv2.CV_32F,ksize=11)
+    
+    #Denoising
+    im_gray = cv2.medianBlur(im_gray, 5)
+    
+    #Laplacian
+    im_grad = cv2.Laplacian(im_gray,cv2.CV_32F,ksize=7)
     im_grad[im_grad<0] = 0
     im_grad = __norm(im_grad)
-    #im_grad = np.abs(im_grad).astype('uint8')
-    
+
     # Otsu's thresholding 
     ret3,im_bin = cv2.threshold(im_grad,0,255,cv2.THRESH_OTSU)
+    
     return im_bin
 
 
