@@ -7,7 +7,8 @@
 
 from matplotlib import pyplot as plt 
 from skimage.exposure import equalize_hist
-from skimage.draw import line_aa,ellipse_perimeter
+from skimage.draw import ellipse, polygon
+from planar import Polygon
 import numpy as np
 import cv2
 
@@ -17,12 +18,15 @@ import cv2
 
 size = (1280,720)
 
-#lines
-delta_lines = [3,20]
-alpha_lines = [0.7,1]
+#polygon
+delta_polygon = [2,4]
+delta_sides = [3,5]
+alpha_poly = [0.8,1]
+min_area = 50000
+min_line = 200
 
 #ellipses
-delta_ellipses = [3,10]
+delta_ellipses = [2,5]
 aplha_ellipses = [0.7,1]
 radius_ellipses = [0.1,0.6] #1 = size, ex:1280,720
 
@@ -34,7 +38,7 @@ alpha_textures = [0.05, 0.1] #max=1
 binary_noise_probability = 0.002 #max=1
 
 #smoothing
-smooth_delta_kernel = [9,17] #[3,7] => (3,3)or(5,5)or(7,7)
+smooth_delta_kernel = [3,7] #[3,7] => (3,3)or(5,5)or(7,7)
 
 #simple noise
 noise_delta_sigma = [-5,5] #max=255
@@ -51,53 +55,91 @@ def norm(im):
     im = (im-np.min(im))*255/(np.max(im)-np.min(im))
     return im.astype('uint8')
 
+# In[]:
+
+def good_polygon(xs,ys,min_area, min_line):
+    
+    #checking area
+    area = 0.5*np.abs(np.dot(xs,np.roll(ys,1))-np.dot(ys,np.roll(xs,1)))
+    if area<min_area:
+        return False
+    
+    #checking if is simples
+    poly = Polygon(zip(xs,ys))
+    if not poly.is_simple:
+        return False
+    
+    #checking if is convex
+    if not poly.is_convex:
+        return False
+
+    #checking lines size
+    distances = np.sqrt( (xs[1:]-xs[:-1])**2 + (ys[1:]-ys[:-1])**2 )
+    if distances.min() < min_line:
+        return False
+
+    return True
+
+# In[]:
+
+def join_imgs(im, im2):
+    im_copy = im.copy()
+
+    #free places
+    cond = (im<=125)*(im2!=0)
+    im_copy[cond] = im2[cond]
+    
+    #intersection
+    cond = (im>125)*(im2!=0)
+    im_copy[cond] = 255-im2[cond]
+    
+    return im_copy
 
 
 # ## Add Lines
 
 # In[6]:
 
-def add_lines(im,delta_lines,alpha_lines):
+def add_polygon(im,delta_polygon,delta_sides,alpha_poly,min_area,min_line):
     im = im.copy()
-
-    #Parameters
-    size = im.shape
-    d_max = np.floor(np.sqrt(size[0]**2+size[1]**2))-10
-    n_lines = np.random.randint(delta_lines[0],delta_lines[1])
     
-    #add lines
-    lines = list()
-    for l in range(n_lines):
-
-        #random line (a point and a angle phi)
-        #ax+b=y
-        x = int(np.random.random()*size[1])
-        y = int(np.random.random()*size[0])
-        phi = np.random.random()*2*np.pi
-        #find limits
-        x1 = 0
-        y1 = int(y+x*np.tan(phi))
-        x2 = int(im.shape[1]) # x_max
-        y2 = int(y - (x2-x)*np.tan(phi))
-        #dist = xsin(o)+ycos(o)
-        angle = np.arctan((y2-y1)/(x1-x2))
-        dist = x1*np.sin(angle)+y1*np.cos(angle)
-        #alpha - opacity
-        alpha = np.random.random()*(alpha_lines[1]-alpha_lines[0])+alpha_lines[0]
+    n_poly = np.random.randint(delta_polygon[0],delta_polygon[1]+1)
+    
+    #add lines from polygons
+    lines = [[],[]]
+    for i in range(n_poly):
         
-        #save
-        lines.append([dist,angle,alpha])
+        xs,ys = [0,0]
+        #== Finding a good polygon
+        while(not good_polygon(xs,ys,min_area,min_line)):
+            
+            #random sides
+            n_sides = np.random.randint(delta_sides[0],delta_sides[1]+1)
 
-        #line pixels
-        rows, cols, vals = line_aa(x1,y1,x2,y2)
-        for r,c,v in zip(rows, cols, vals):
-            if r<0 or r>=size[0] or c<0 or c>=size[1]:
-                continue #out matrix
-            im[r][c] = v*alpha
-    
-    im[np.isnan(im)]=1
-    
-    return np.array(lines), norm(im)
+            #random vertices
+            xs = (np.random.random(n_sides)*size[0]).astype('int')
+            ys = (np.random.random(n_sides)*size[1]).astype('int')
+            xs = np.append(xs, xs[0])
+            ys = np.append(ys, ys[0])
+        
+        #== Create polygon
+        rows, cols = polygon(ys,xs)
+        #random alpha
+        alpha = np.random.random()*(alpha_poly[1]-alpha_poly[0])+alpha_poly[0]
+        #new image with the object
+        im_tmp = np.zeros(im.shape)
+        im_tmp[rows,cols] = 255*alpha
+        
+        #join images
+        im = join_imgs(im, im_tmp)
+        
+        #save lines
+        angles = np.arctan((ys[:-1]-ys[1:])/(xs[1:]-xs[:-1]))
+        dists = xs[1:]*np.sin(angles)+ys[1:]*np.cos(angles)
+        lines[0] += list(dists)
+        lines[1] += list(angles)
+        
+    return np.array(lines), im
 
 
 # ## Add Ellipses
@@ -129,12 +171,16 @@ def add_ellipses(im,delta_ellipses,radius_ellipses,aplha_ellipses):
         alpha = np.random.random()*(aplha_ellipses[1]-aplha_ellipses[0])+aplha_ellipses[0]
         
         #create ellipse
-        pixels_y, pixels_x = ellipse_perimeter(center_y, center_x, radius_y, radius_x, shape = size)
-        vals = im[pixels_y,pixels_x]+255*alpha
-        vals[vals>255] = 255
-        im[pixels_y,pixels_x] = vals
+        rows, cols = ellipse(center_y, center_x, radius_y, radius_x, shape = size)
+        
+        #new image with the object
+        im_tmp = np.zeros(im.shape)
+        im_tmp[rows,cols] = 255*alpha
+        
+        #join images
+        im = join_imgs(im, im_tmp)
 
-    return norm(im)
+    return im
 
 # ## Texture
 # Load all textures:
@@ -249,8 +295,11 @@ def equalize(im):
 
 def im_generator(n_images=1,
                  size = size,
-                 delta_lines = delta_lines,
-                 alpha_lines = alpha_lines,
+                 delta_polygon = delta_polygon,
+                 delta_sides = delta_sides,
+                 alpha_poly = alpha_poly,
+                 min_area = min_area,
+                 min_line = min_line,
                  delta_ellipses = delta_ellipses,
                  radius_ellipses = radius_ellipses,
                  aplha_ellipses = aplha_ellipses,                 
@@ -261,7 +310,7 @@ def im_generator(n_images=1,
                  noise_delta_sigma = noise_delta_sigma):
     
     #load textures
-    ims_texture = load_textures(n_textures,size)
+    ims_texture = load_textures(n_textures)
     
     ims = list()
     lines_list = list()
@@ -270,13 +319,13 @@ def im_generator(n_images=1,
         im = np.zeros((size[1],size[0]))
 
         #Add Lines
-        lines,im = add_lines(im,delta_lines,alpha_lines)
+        lines,im = add_polygon(im,delta_polygon,delta_sides,alpha_poly,min_area,min_line)
         
         #Add Ellipses
         im = add_ellipses(im,delta_ellipses,radius_ellipses,aplha_ellipses)
-        
+            
         #Add Texture
-        im = add_texture(im, ims_texture,alpha_textures)
+        #im = add_texture(im, ims_texture,alpha_textures)
 
         #Add Binary Noise
         im = add_binary_noise(im,binary_noise_probability)
@@ -290,16 +339,14 @@ def im_generator(n_images=1,
         #Equalize
         im = equalize(im)
         
-        #Lines
+        #Save
         ims.append(im)
         lines_list.append(lines)
     
     #to numpy
     ims = np.array(ims)
-    lines_list = np.array(lines_list)
     
     return lines_list,ims
-
 
 
 
