@@ -23,7 +23,19 @@ def imshow(img):
     plt.imshow(img,cmap='gray')
     plt.show()
 
-
+def imshow2(img1,img2):
+    plt.figure(figsize=(20,20))
+    
+    plt.subplot(1, 2, 1)
+    plt.axis('off')
+    plt.imshow(img1,cmap='gray')
+    
+    plt.subplot(1, 2, 2)
+    plt.axis('off')
+    plt.imshow(img2,cmap='gray')
+    
+    plt.show()
+    
 # Simple gradient
 def bin_im1(im_gray, _disk = 1):
     im_grad = gradient(im_gray, disk(_disk))

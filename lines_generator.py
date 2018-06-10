@@ -325,7 +325,7 @@ def im_generator(n_images=1,
         im = add_ellipses(im,delta_ellipses,radius_ellipses,aplha_ellipses)
             
         #Add Texture
-        #im = add_texture(im, ims_texture,alpha_textures)
+        im = add_texture(im, ims_texture,alpha_textures)
 
         #Add Binary Noise
         im = add_binary_noise(im,binary_noise_probability)
@@ -337,7 +337,7 @@ def im_generator(n_images=1,
         im = add_noise(im,noise_delta_sigma)
         
         #Equalize
-        im = equalize(im)
+        #im = equalize(im)
         
         #Save
         ims.append(im)
