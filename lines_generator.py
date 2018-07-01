@@ -350,3 +350,85 @@ def im_generator(n_images=1,
 
 
 
+
+
+
+#https://www.kaggle.com/ezietsman/simple-keras-model-with-data-generator
+def dataGenerator(n_images,name,patche_size=17,expand_dims=False,reshape=True,batche_size=16,prob=0.0):
+    
+    #open all images
+    ims = list()
+    masks = list()
+    for i in range(n_images):
+        ims.append(np.load('data/'+name+'/im_'+str(i+1)+'.npy'))
+        masks.append(np.load('data/'+name+'/label_'+str(i+1)+'.npy'))
+    ims = np.array(ims)
+    masks = np.array(masks)
+    pts = np.load('data/'+name+'/points.npy')
+    
+    #sizes
+    p = int((patche_size-1)/2)
+                     
+    while(1):
+        patches = list()
+        labels = list()
+        for b in range(batche_size):
+            #random image 
+            i_im = np.random.randint(n_images)
+            
+            #fix a line pixel or normal pixel
+            if np.random.random() < prob:
+                #Fix a line pixel
+                line = np.random.randint(pts[i_im][0].shape[0])
+                x = pts[i_im][1][line]+p
+                y = pts[i_im][0][line]+p
+            else:
+                #Normal pixel
+                #random pixel
+                size = np.array(ims[i_im].shape)-2*p
+                x = np.random.randint(size[1])+p
+                y = np.random.randint(size[0])+p
+
+            #cut
+            patche = ims[i_im][y-p:y+p+1,x-p:x+p+1]
+            label = masks[i_im][y,x]
+
+            #adjust
+            if reshape:
+                patche = np.reshape(patche,patche_size**2)
+            if expand_dims:
+                patche = np.expand_dims(patche, axis=2)
+            
+            #save
+            patches.append(patche)
+            labels.append([label,int(not label)])
+
+        patches = np.array(patches,dtype = type(ims[0][0,0]))
+        labels = np.array(labels,dtype = type(masks[0][0,0]))
+        yield (patches, labels)
+
+        
+#Expand to convolution
+def expand(ims,patche_size):
+    
+    p = int((patche_size-1)/2)
+    new_ims = list()
+
+    for im in ims:
+        
+        new_im = np.zeros(np.array(im.shape)+p*2)
+        new_im = new_im.astype(type(im[0,0]))
+        
+        #center
+        new_im[p:-p,p:-p] = im
+        
+        #border
+        new_im[p:-p,:p] = im[::-1,-p:]
+        new_im[p:-p,-p:]= im[::-1,:p]
+        
+        #save
+        new_ims.append(new_im)
+
+    #to numpy
+    new_ims = np.array(new_ims,dtype = type(ims[0,0,0]))
+    return new_ims

@@ -3,7 +3,10 @@
 *.pyc
 .ipynb_checkpoints
 .vscode
-
+*.png 
+*.jpg
+*.h5
 __pycache__
+
 
 out.png
