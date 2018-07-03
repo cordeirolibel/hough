@@ -1,0 +1,35 @@
+Model1:
+	Arquitetura: 
+		289x1000x1000x2
+		sigmoid, sigmoid, softmax
+	generator: 
+		50% de picos 
+		50 treinos, 10 test
+	20 epoch
+	5:24min predict UFPR.jpg
+	threshold = 0.999
+	
+Model2:
+	Arquitetura: 
+		289x200x200x2
+		sigmoid, sigmoid, softmax
+	generator: 
+		50% de picos 
+		50 treinos, 10 test
+	20 epoch
+	54s predict UFPR.jpg
+	score: [0.007066669183132035, 0.9990234375]
+	threshold = 0.999
+
+Model3:
+	Arquitetura: 
+		289x200x200x2
+		sigmoid, sigmoid, softmax
+	generator: 
+		20% de picos 
+		80% não linhas proximos picos
+		50 treinos, 10 test
+	50 epoch
+	54s predict UFPR.jpg
+	score: [0.19393028672493529, 0.90966796875]
+	threshold = 0.5

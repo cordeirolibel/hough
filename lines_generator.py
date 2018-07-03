@@ -350,11 +350,11 @@ def im_generator(n_images=1,
 
 
 
-
-
-
 #https://www.kaggle.com/ezietsman/simple-keras-model-with-data-generator
-def dataGenerator(n_images,name,patche_size=17,expand_dims=False,reshape=True,batche_size=16,prob=0.0):
+def dataGenerator(n_images,name,
+                  patche_size=17,batche_size=16,
+                  expand_dims=False,reshape=True,
+                  prob_peaks=0.5,prob_near_peaks=0.5):
     
     #open all images
     ims = list()
@@ -362,6 +362,7 @@ def dataGenerator(n_images,name,patche_size=17,expand_dims=False,reshape=True,ba
     for i in range(n_images):
         ims.append(np.load('data/'+name+'/im_'+str(i+1)+'.npy'))
         masks.append(np.load('data/'+name+'/label_'+str(i+1)+'.npy'))
+        
     ims = np.array(ims)
     masks = np.array(masks)
     pts = np.load('data/'+name+'/points.npy')
@@ -372,27 +373,56 @@ def dataGenerator(n_images,name,patche_size=17,expand_dims=False,reshape=True,ba
     while(1):
         patches = list()
         labels = list()
+        
         for b in range(batche_size):
             #random image 
             i_im = np.random.randint(n_images)
+            size = np.array(ims[i_im].shape)-2*p
             
-            #fix a line pixel or normal pixel
-            if np.random.random() < prob:
-                #Fix a line pixel
+            #fix a line pixel
+            if np.random.random() < prob_peaks:
+                #sort a line pixel
                 line = np.random.randint(pts[i_im][0].shape[0])
                 x = pts[i_im][1][line]+p
                 y = pts[i_im][0][line]+p
+                
+                #cut
+                patche = ims[i_im][y-p:y+p+1,x-p:x+p+1]
+                label = masks[i_im][y,x]
+            #random pixel near a peak
+            elif np.random.random() < prob_near_peaks:
+                #sort a line pixel
+                line = np.random.randint(pts[i_im][0].shape[0])
+                x = pts[i_im][1][line]+p
+                y = pts[i_im][0][line]+p
+                
+                #random shift 
+                x += np.random.randint(patche_size)-p
+                y += np.random.randint(patche_size)-p
+                
+                #limits
+                x = (x-p)%size[1] + p
+                y = (y-p)%size[0] + p
+                
+                #cut
+                patche = ims[i_im][y-p:y+p+1,x-p:x+p+1]
+                label = masks[i_im][y,x]
+            #Normal pixel 
             else:
-                #Normal pixel
-                #random pixel
-                size = np.array(ims[i_im].shape)-2*p
-                x = np.random.randint(size[1])+p
-                y = np.random.randint(size[0])+p
+                
+                while(1):
+                    #random pixel
+                    x = np.random.randint(size[1])+p
+                    y = np.random.randint(size[0])+p
 
-            #cut
-            patche = ims[i_im][y-p:y+p+1,x-p:x+p+1]
-            label = masks[i_im][y,x]
-
+                    #cut
+                    patche = ims[i_im][y-p:y+p+1,x-p:x+p+1]
+                    label = masks[i_im][y,x]
+                    
+                    #do again if is a empty patch
+                    if patche.sum()>0:
+                        break
+            
             #adjust
             if reshape:
                 patche = np.reshape(patche,patche_size**2)
