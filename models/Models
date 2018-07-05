@@ -2,6 +2,9 @@ Model1:
 	Arquitetura: 
 		289x1000x1000x2
 		sigmoid, sigmoid, softmax
+	Treino:
+		optimizer='RMSprop'
+		loss='categorical_crossentropy'
 	generator: 
 		50% de picos 
 		50 treinos, 10 test
@@ -13,6 +16,9 @@ Model2:
 	Arquitetura: 
 		289x200x200x2
 		sigmoid, sigmoid, softmax
+	Treino:
+		optimizer='RMSprop'
+		loss='categorical_crossentropy'
 	generator: 
 		50% de picos 
 		50 treinos, 10 test
@@ -25,6 +31,9 @@ Model3:
 	Arquitetura: 
 		289x200x200x2
 		sigmoid, sigmoid, softmax
+	Treino:
+		optimizer='RMSprop'
+		loss='categorical_crossentropy'
 	generator: 
 		20% de picos 
 		80% não linhas proximos picos
@@ -33,3 +42,21 @@ Model3:
 	54s predict UFPR.jpg
 	score: [0.19393028672493529, 0.90966796875]
 	threshold = 0.5
+
+
+Model4:
+	Arquitetura: 
+		289x350x250x2
+		sigmoid, sigmoid, softmax
+	Treino:
+		optimizer='Adamax'
+		loss='binary_crossentropy'
+	generator: 
+		20% de picos 
+		80% não linhas proximos picos
+		50 treinos, 10 test
+	50 epoch
+	54s predict UFPR.jpg
+	score: [0.17585245807686078, 0.9276123046875]
+	threshold = 0.5
+

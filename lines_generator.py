@@ -351,7 +351,7 @@ def im_generator(n_images=1,
 
 
 #https://www.kaggle.com/ezietsman/simple-keras-model-with-data-generator
-def dataGenerator(n_images,name,
+def dataGenerator(n_images,name,delta_shift=None,
                   patche_size=17,batche_size=16,
                   expand_dims=False,reshape=True,
                   prob_peaks=0.5,prob_near_peaks=0.5):
@@ -369,7 +369,9 @@ def dataGenerator(n_images,name,
     
     #sizes
     p = int((patche_size-1)/2)
-                     
+    if delta_shift is None:
+        delta_shift = patche_size
+        
     while(1):
         patches = list()
         labels = list()
@@ -397,8 +399,8 @@ def dataGenerator(n_images,name,
                 y = pts[i_im][0][line]+p
                 
                 #random shift 
-                x += np.random.randint(patche_size)-p
-                y += np.random.randint(patche_size)-p
+                x += np.random.randint(delta_shift)-int(delta_shift/2)
+                y += np.random.randint(delta_shift)-int(delta_shift/2)
                 
                 #limits
                 x = (x-p)%size[1] + p
