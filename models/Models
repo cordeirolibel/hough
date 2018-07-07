@@ -60,3 +60,26 @@ Model4:
 	score: [0.17585245807686078, 0.9276123046875]
 	threshold = 0.5
 
+Model5:
+	Arquitetura:
+		Conv: 32 kernel(5,5) stride(1,1) relu
+		Pool: (2,2) stride(2,2)
+		Conv: 64 kernel(5,5) relu
+		Pool: (2,2)
+		Dense: 1000 sigmoid
+		Dense: 2 softmax
+	Train:
+		optimizer: Adamax
+		loss: binary_crossentropy
+	generator: 
+		20% de picos 
+		80% não linhas proximos picos
+		100 treinos, 20 test
+	10 epoch, 1024 samples_per_epoch
+	5min 36s predict UFPR.jpg
+	score: [0.0818509245857797, 0.973388671875]
+	threshold: 0.5
+	
+	
+	
+
