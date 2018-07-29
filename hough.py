@@ -70,7 +70,7 @@ def bin_im3(im_gray,thresholds = (50,200)):
     im_bin = cv2.Canny(im_gray,thresholds[0],thresholds[1])
     return im_bin
 
-def plot_lines(im_gray,dists,angles,linewidth=0.7):
+def plot_lines(im_gray,dists,angles,linewidth=0.7,save=None):
     y_max, x_max = im_gray.shape
     #dists =np.around(dists+y_max)
     #x1s = 0
@@ -91,6 +91,10 @@ def plot_lines(im_gray,dists,angles,linewidth=0.7):
     # [xmin, xmax, ymin, ymax] ivert y for image
     plt.axis((0,x_max,y_max,0))
     
+    if save is not None:
+        plt.savefig(save)
+        
+
     plt.show()
 
 

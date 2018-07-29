@@ -54,10 +54,10 @@ Model4:
 	generator: 
 		20% de picos 
 		80% não linhas proximos picos
-		50 treinos, 10 test
-	50 epoch
+		100 treinos, 20 test
+	50 epoch, 1024 samples_per_epoch
 	54s predict UFPR.jpg
-	score: [0.17585245807686078, 0.9276123046875]
+	score: [0.14428064215161385, 0.9423828125]
 	threshold = 0.5
 
 Model5:
