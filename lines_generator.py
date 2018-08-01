@@ -51,7 +51,7 @@ noise_delta_sigma = [-5,5] #max=255
 # In[4]:
 
 def norm(im):
-    im = np.array(im).astype('float32')
+    im = np.array(im.copy()).astype('float32')
     im = (im-np.min(im))*255/(np.max(im)-np.min(im))
     return im.astype('uint8')
 
@@ -354,61 +354,86 @@ def im_generator(n_images=1,
 def dataGenerator(n_images,name,delta_shift=None,
                   patche_size=17,batche_size=16,
                   expand_dims=False,reshape=True,
-                  prob_peaks=0.5,prob_near_peaks=0.5):
+                  prob_peaks=0.2,prob_near_peaks=0.6,
+                  batch_load_time=64,batch_load_size=100):
     
-    #open all images
-    ims = list()
-    masks = list()
-    for i in range(n_images):
-        ims.append(np.load('data/'+name+'/im_'+str(i+1)+'.npy'))
-        masks.append(np.load('data/'+name+'/label_'+str(i+1)+'.npy'))
-        
-    ims = np.array(ims)
-    masks = np.array(masks)
+    #load pts
     pts = np.load('data/'+name+'/points.npy')
     
     #sizes
     p = int((patche_size-1)/2)
     if delta_shift is None:
         delta_shift = patche_size
-        
+    real_n_images = n_images
+    n_images = min((batch_load_size,real_n_images))
+    
+    k = 0
     while(1):
+        
+        if k%batch_load_time == 0:
+            #random images
+            arr = np.arange(real_n_images)
+            np.random.shuffle(arr)
+            arr = arr[:batch_load_size]
+            
+            #open all images
+            ims = list()
+            masks = list()
+            for i in arr:
+                ims.append(np.load('data/'+name+'/im_'+str(i+1)+'.npy'))
+                masks.append(np.load('data/'+name+'/label_'+str(i+1)+'.npy'))
+            ims = np.array(ims)
+            masks = np.array(masks)
+    
+            k = 0
+        k += 1
+        
         patches = list()
         labels = list()
         
         for b in range(batche_size):
             #random image 
             i_im = np.random.randint(n_images)
-            size = np.array(ims[i_im].shape)-2*p
+            im = ims[i_im]
+            mask = masks[i_im]
+            i_im = arr[i_im]
+            
+            size = np.array(im.shape)-2*p
+            
+            prob_pixel = np.random.random()
             
             #fix a line pixel
-            if np.random.random() < prob_peaks:
+            if prob_pixel < prob_peaks:
                 #sort a line pixel
                 line = np.random.randint(pts[i_im][0].shape[0])
                 x = pts[i_im][1][line]+p
                 y = pts[i_im][0][line]+p
                 
                 #cut
-                patche = ims[i_im][y-p:y+p+1,x-p:x+p+1]
-                label = masks[i_im][y,x]
+                patche = im[y-p:y+p+1,x-p:x+p+1]
+                label = mask[y,x]
+                
             #random pixel near a peak
-            elif np.random.random() < prob_near_peaks:
+            elif prob_pixel < (prob_near_peaks+prob_peaks):
                 #sort a line pixel
                 line = np.random.randint(pts[i_im][0].shape[0])
                 x = pts[i_im][1][line]+p
                 y = pts[i_im][0][line]+p
                 
                 #random shift 
-                x += np.random.randint(delta_shift)-int(delta_shift/2)
-                y += np.random.randint(delta_shift)-int(delta_shift/2)
+                n1 = np.round(np.random.normal(0, delta_shift/3)).astype('int')
+                n2 = np.round(np.random.normal(0, delta_shift/3)).astype('int')
+                x += n1
+                y += n2
                 
                 #limits
                 x = (x-p)%size[1] + p
                 y = (y-p)%size[0] + p
                 
                 #cut
-                patche = ims[i_im][y-p:y+p+1,x-p:x+p+1]
-                label = masks[i_im][y,x]
+                patche = im[y-p:y+p+1,x-p:x+p+1]
+                label = mask[y,x]
+                
             #Normal pixel 
             else:
                 
@@ -418,8 +443,8 @@ def dataGenerator(n_images,name,delta_shift=None,
                     y = np.random.randint(size[0])+p
 
                     #cut
-                    patche = ims[i_im][y-p:y+p+1,x-p:x+p+1]
-                    label = masks[i_im][y,x]
+                    patche = im[y-p:y+p+1,x-p:x+p+1]
+                    label = mask[y,x]
                     
                     #do again if is a empty patch
                     if patche.sum()>0:
@@ -431,12 +456,14 @@ def dataGenerator(n_images,name,delta_shift=None,
             if expand_dims:
                 patche = np.expand_dims(patche, axis=2)
             
+            
             #save
+            patche = patche.copy()
             patches.append(patche)
             labels.append([label,int(not label)])
 
-        patches = np.array(patches,dtype = type(ims[0][0,0]))
-        labels = np.array(labels,dtype = type(masks[0][0,0]))
+        patches = np.array(patches,dtype = type(im[0,0]))
+        labels = np.array(labels,dtype = type(mask[0,0]))
         yield (patches, labels)
 
         
